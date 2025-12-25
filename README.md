@@ -1,13 +1,14 @@
 # AWS Cloud-Native Playground
 
-This project is a **cloud-native playground** built to explore, compare, and reason about **AWS managed services and modern application platforms**, with a strong focus on:
+This project is a **cloud-native playground** designed to explore, compare, and reason about **AWS managed services and modern application platforms**, with a strong focus on:
 
-- **Infrastructure as Code**
-- **Event-driven architecture**
-- **Managed compute platforms**
-- **Platform and cloud engineering practices**
+- Infrastructure as Code
+- Event-driven architecture
+- Managed compute platforms
+- Platform and cloud engineering practices
+- End-to-end system design
 
-The goal is not to optimize for a single “best” architecture, but to **intentionally combine multiple AWS compute and data models** to understand their trade-offs, operational characteristics, and real-world use cases.
+The goal is **not** to optimize for a single “best” architecture, but to intentionally combine multiple AWS services and execution models in order to understand their **trade-offs, operational characteristics, and real-world applicability**.
 
 ---
 
@@ -24,82 +25,105 @@ The goal is not to optimize for a single “best” architecture, but to **inten
 - **Platform thinking over machine thinking**
 - **Clear separation of concerns**
 
-> This project intentionally avoids server-level operations and focuses exclusively on **managed cloud primitives and platform abstractions**.
+> This project intentionally avoids server-level operations and focuses exclusively on managed cloud primitives and platform abstractions.
 
 ---
 
 ## High-Level Architecture
 
-The platform runs multiple services using different compute paradigms, connected through **managed messaging and data services**, provisioned entirely via Terraform and operated through GitOps where applicable.
+The platform is composed of multiple services running on different AWS compute paradigms, connected through managed messaging and data services, and exposed via a static frontend served at the edge.
 
-### Compute
+```
+Frontend (S3 + CloudFront)
+|
+v
+APIs (ECS / EKS)
+|
+v
+Messaging (SQS / EventBridge)
+|
+v
+Workers (EKS)
+|
+v
+Data (RDS / DynamoDB)
+```
 
-- **ECS Fargate**
-  - Managed container execution without Kubernetes
-  - Ideal for stateless APIs and simple background processing
 
-- **EKS (Kubernetes)**
-  - Cloud-native orchestration
-  - Used for workloads that benefit from Kubernetes-native patterns
-  - GitOps-managed via ArgoCD
+All infrastructure is provisioned via Terraform, and Kubernetes workloads are managed using GitOps.
 
-### Messaging & Events
+---
+
+## Compute Platforms
+
+### ECS Fargate
+- Fully managed container execution
+- No cluster or node management
+- Ideal for stateless APIs and simple background services
+
+### EKS (Kubernetes)
+- Cloud-native orchestration
+- Used for workloads that benefit from Kubernetes primitives
+- Managed declaratively and reconciled via GitOps (ArgoCD)
+
+The project intentionally uses **both ECS and EKS** to demonstrate **when Kubernetes is valuable and when it is unnecessary**.
+
+---
+
+## Messaging & Eventing
 
 - **Amazon SQS**
-  - Core asynchronous communication mechanism
-  - Retry, DLQ, and backpressure handling
+  - Primary asynchronous communication channel
+  - Retries, DLQs, and backpressure handling
 - **Amazon SNS / EventBridge**
   - Event fan-out and routing
-  - Decoupling producers from consumers
+  - Loose coupling between producers and consumers
 - **Kafka (optional / comparative)**
-  - Used only for learning and comparison
+  - Included only for learning and comparison
   - Not a mandatory dependency
 
-### Data
-
-- **Amazon DynamoDB**
-  - Idempotency keys
-  - Distributed locks
-  - Lightweight state and coordination
-- **Amazon RDS (PostgreSQL)**
-  - Transactional data
-  - Strong consistency
-  - Domain-oriented relational storage
-
-### Infrastructure
-
-- **Terraform** as the single source of truth
-- Modular, environment-aware design
-- No click-ops
-- No manual drift correction
-
----
-
-## Services Overview
-
-| Service | Platform | Stack | Responsibility |
-|------|--------|------|---------------|
-| spring-api | ECS Fargate | Spring Boot | Stateless API, SQS producer, RDS access |
-| quarkus-service | EKS | Quarkus | Low-latency API and event publisher |
-| go-worker | EKS | Go | Asynchronous event consumer and processor |
-
----
-
-## Event-Driven Communication
-
-The system is designed around **asynchronous messaging**:
-
-- APIs publish domain events to **SQS**
-- Workers consume events independently
-- Failures are handled via retries and DLQs
-- EventBridge/SNS can be used for fan-out scenarios
-
-This design emphasizes:
-
+This architecture emphasizes:
 - Loose coupling
-- Horizontal scalability
 - Failure isolation
-- Backpressure awareness
+- Horizontal scalability
+- Event-driven system design
+
+---
+
+## Data Layer
+
+### Amazon DynamoDB
+- Idempotency keys
+- Lightweight state
+- Distributed locks and coordination
+- Event-processing support
+
+### Amazon RDS (PostgreSQL)
+- Transactional data
+- Strong consistency
+- Domain-oriented relational storage
+- Private, VPC-isolated access
+
+DynamoDB and RDS are used **together**, each for what they do best.
+
+---
+
+## Frontend & Edge
+
+The platform includes a static frontend deployed using:
+
+- **Amazon S3** (static hosting)
+- **Amazon CloudFront** (CDN)
+- **AWS ACM** (TLS)
+- **Amazon Route 53** (DNS)
+
+Characteristics:
+- Fully managed
+- HTTPS enforced
+- No custom backend
+- Deployed independently from backend services
+
+The frontend interacts with ECS and EKS APIs and provides visibility into asynchronous workflows.
 
 ---
 
@@ -107,14 +131,16 @@ This design emphasizes:
 
 All infrastructure is provisioned using **Terraform**, including:
 
-- VPC, subnets, routing, NAT
+- VPC, subnets, routing, and NAT
 - ECS clusters and services
 - EKS cluster, node groups, and OIDC
 - IAM roles and policies
 - **IRSA (IAM Roles for Service Accounts)**
-- SQS and DLQs
+- SQS queues and DLQs
+- EventBridge rules
 - DynamoDB tables
 - RDS PostgreSQL instances
+- Frontend infrastructure (S3, CloudFront, ACM, Route 53)
 - Observability backends
 
 There is **no manual configuration** performed outside Terraform.
@@ -126,8 +152,8 @@ There is **no manual configuration** performed outside Terraform.
 Kubernetes workloads are managed using **GitOps**:
 
 - **ArgoCD** runs inside the EKS cluster
-- Kubernetes manifests live under `k8s/`
-- ArgoCD reconciles desired state from Git
+- All Kubernetes manifests live under `k8s/`
+- ArgoCD continuously reconciles desired state from Git
 - No manual `kubectl apply` in steady state
 
 Terraform is responsible for **infrastructure**,  
@@ -139,44 +165,42 @@ ArgoCD is responsible for **Kubernetes state**.
 
 Observability is treated as a **first-class platform concern**:
 
-- **CloudWatch**
-  - Logs for ECS and infrastructure
+- **Amazon CloudWatch**
+  - Logs and metrics for ECS and infrastructure
 - **Amazon Managed Prometheus (AMP)**
-  - Metrics backend
+  - Centralized metrics backend
 - **Amazon Managed Grafana**
   - Dashboards and visualization
 - **AWS Distro for OpenTelemetry (ADOT)**
   - Metrics collection in EKS via IRSA
 
-This setup avoids self-hosted observability stacks while preserving **standardized instrumentation**.
+This setup avoids self-hosted observability stacks while preserving standardized instrumentation.
 
 ---
 
 ## Environments
 
-The infrastructure supports multiple isolated environments:
+The project supports multiple isolated environments:
 
 - `dev`
 - `staging`
 - `prod`
 
 Each environment:
-- Shares the same Terraform modules
-- Can differ in size, scaling, and cost
-- Is isolated at the infrastructure level
+- Uses the same Terraform modules
+- Is fully isolated
+- Can differ in size, scaling, and cost characteristics
 
 ---
 
-## Why ECS and EKS Together?
+## Services Overview
 
-This project intentionally uses **both ECS and EKS** to demonstrate:
-
-- When Kubernetes is powerful
-- When Kubernetes is unnecessary
-- How managed services reduce operational burden
-- How platform engineers choose tools pragmatically
-
-This is a **learning-driven architectural choice**, not an optimization exercise.
+| Service           | Platform      | Stack        | Responsibility |
+|------------------|---------------|--------------|----------------|
+| spring-api        | ECS Fargate   | Spring Boot  | Stateless API, SQS producer, RDS access |
+| quarkus-service   | EKS           | Quarkus      | Low-latency API and event publisher |
+| go-worker         | EKS           | Go           | Asynchronous event consumer and processor |
+| frontend          | S3 + CDN      | React / Next | User interaction and workflow visibility |
 
 ---
 
@@ -187,6 +211,8 @@ This is a **learning-driven architectural choice**, not an optimization exercise
 - A single-stack showcase
 - A server-centric or VM-oriented architecture
 
+This project prioritizes **learning, trade-off analysis, and architectural clarity**.
+
 ---
 
 ## Who This Project Is For
@@ -194,7 +220,7 @@ This is a **learning-driven architectural choice**, not an optimization exercise
 - Platform Engineers
 - Cloud Engineers
 - Backend Engineers exploring cloud-native systems
-- Anyone interested in **AWS compute, data, and orchestration trade-offs in practice**
+- Engineers interested in AWS compute, data, and orchestration trade-offs
 
 ---
 
@@ -210,10 +236,11 @@ This is a **learning-driven architectural choice**, not an optimization exercise
 - [x] IRSA and IAM hardening
 - [x] Observability with AMP and Grafana
 - [x] GitOps with ArgoCD
+- [x] Frontend with S3, CloudFront, TLS, and DNS
 - [ ] EventBridge fan-out scenarios
-- [ ] Optional Kafka comparison
+- [ ] Lambda for event glue
 - [ ] Distributed tracing with OpenTelemetry
-- [ ] Multi-account setup
+- [ ] Multi-account AWS setup
 
 ---
 
@@ -221,9 +248,9 @@ This is a **learning-driven architectural choice**, not an optimization exercise
 
 This project reflects a **platform engineering mindset**, prioritizing:
 
-- Managed services
-- Clear boundaries
-- Explicit trade-offs
-- Automation and reproducibility
+- Managed services over infrastructure ownership
+- Explicit trade-offs over “one-size-fits-all” solutions
+- Automation, security, and reproducibility
+- End-to-end system design
 
 It is designed to mirror how **modern cloud platforms are built, operated, and evolved at scale**.
