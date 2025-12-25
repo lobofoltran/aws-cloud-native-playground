@@ -110,3 +110,26 @@ resource "aws_security_group_rule" "ecs_to_rds" {
   source_security_group_id = module.spring_api.security_group_id
 }
 
+module "dns" {
+  source      = "../../modules/dns"
+  domain_name = "lobofoltran.dev"
+}
+
+module "acm" {
+  source      = "../../modules/acm"
+  domain_name = "app.lobofoltran.dev"
+  zone_id     = module.dns.zone_id
+}
+
+module "frontend_bucket" {
+  source      = "../../modules/s3-static-site"
+  bucket_name = "lobofoltran-dev-frontend"
+}
+
+module "cloudfront" {
+  source           = "../../modules/cloudfront"
+  domain_name      = "app.lobofoltran.dev"
+  certificate_arn  = module.acm.certificate_arn
+  origin_domain    = module.frontend_bucket.bucket_domain
+  zone_id          = module.dns.zone_id
+}
