@@ -1,0 +1,94 @@
+# =====================
+# OS
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# IDEs / Editors
+# =====================
+.idea/
+.vscode/
+*.iml
+
+# =====================
+# Terraform
+# =====================
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# =====================
+# Kubernetes / Helm
+# =====================
+*.tgz
+charts/
+values.local.yaml
+
+# =====================
+# Java (Spring / Quarkus)
+# =====================
+target/
+*.log
+*.class
+
+# =====================
+# Maven / Gradle
+# =====================
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+build/
+
+# =====================
+# Go
+# =====================
+bin/
+*.exe
+*.out
+*.test
+
+# =====================
+# Node / Frontend / Tooling
+# =====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =====================
+# Docker
+# =====================
+*.env
+.env.*
+docker-compose.override.yml
+
+# =====================
+# Logs & Runtime
+# =====================
+logs/
+tmp/
+.cache/
+
+# =====================
+# Security / Secrets
+# =====================
+*.pem
+*.key
+*.crt
+secrets.yaml
+secrets.json
+
+# =====================
+# Misc
+# =====================
+coverage/
+dist/
+out/

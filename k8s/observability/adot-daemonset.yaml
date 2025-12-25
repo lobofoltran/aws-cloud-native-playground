@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: adot-collector
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app: adot
+  template:
+    metadata:
+      labels:
+        app: adot
+    spec:
+      serviceAccountName: adot-collector
+      containers:
+        - name: adot
+          image: public.ecr.aws/aws-observability/aws-otel-collector:latest
+          args: ["--config=/conf/collector.yaml"]
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: adot-config

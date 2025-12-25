@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/SEU_USUARIO/aws-cloud-native-playground
+    path: k8s/observability
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
