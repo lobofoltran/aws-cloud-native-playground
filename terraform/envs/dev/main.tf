@@ -133,3 +133,12 @@ module "cloudfront" {
   origin_domain    = module.frontend_bucket.bucket_domain
   zone_id          = module.dns.zone_id
 }
+
+resource "aws_security_group_rule" "ecs_to_redis" {
+  type                     = "ingress"
+  from_port                = 6379
+  to_port                  = 6379
+  protocol                 = "tcp"
+  security_group_id        = module.redis.security_group_id
+  source_security_group_id = module.spring_api.security_group_id
+}
